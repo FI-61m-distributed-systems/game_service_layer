@@ -18,7 +18,8 @@ def left(a):
                 a[i][j] *= 2
                 a[i][j + 1] = None
     if check != a:
-        new_number(a)
+        return True
+    return False
 
 
 def right(a):
@@ -32,7 +33,8 @@ def right(a):
                 a[i][j] *= 2
                 a[i][j - 1] = None
     if check != a:
-        new_number(a)
+        return True
+    return False
 
 
 def up(a):
@@ -46,7 +48,8 @@ def up(a):
                 a[i][j] *= 2
                 a[i + 1][j] = None
     if check != a:
-        new_number(a)
+        return True
+    return False
 
 
 def down(a):
@@ -60,12 +63,14 @@ def down(a):
                 a[i][j] *= 2
                 a[i - 1][j] = None
     if check != a:
-        new_number(a)
+        return True
+    return False
 
 
 def restart(a):
-    a = copy.deepcopy(start)
-    return a
+    for i in range(4):
+        for j in range(4):
+            a[i][j] = start[i][j]
 
 
 def new_number(a):
@@ -80,14 +85,17 @@ start = [[4, 4, 4, 4],
 field = copy.deepcopy(start)
 
 
-def show(a):
-    for i in range(4):
-        for j in range(4):
-            if a[i][j] is None:
-                print(a[i][j], end=" ")
-            else:
-                print(a[i][j], end="\t")
-        print()
+def end_condition_check(a):
+    test_a = copy.deepcopy(a)
+    if not right(test_a) and not up(test_a) and not left(test_a) and not down(test_a):
+        return True
+    return False
+
+
+def serialize(a):
+    field = np.array(a)
+    field.resize(16)
+    return jsonify({"field": list(field)})
 
 
 @app.route('/', methods=["POST"])
@@ -97,21 +105,32 @@ def change_state():
     allowed_actions = ["up", "left", "right", "down", "restart"]
     if action not in allowed_actions:
         return response_client_error()
-    # result = get_state()
+    # field = get_state()
     if action == "up":
-        up(field)
+        move = up(field)
     elif action == "down":
-        down(field)
+        move = down(field)
     elif action == "left":
-        left(field)
+        move = left(field)
     elif action == "right":
-        right(field)
+        move = right(field)
+    else:
+        restart(field)
+        result = serialize(field)
+        return response_ok(result)
 
-    show(field)
-    out_field = np.array(field)
-    out_field.resize(16)
-    out_field = jsonify({"field": list(out_field)})
-    return response_ok(out_field)
+    if move is True:
+        new_number(field)
+    elif end_condition_check(field):
+        data = np.array(field)
+        data.resize(16)
+        score = max(data)
+        return response_ok("Game is over")
+    else:
+        return response_ok()
+    #show(field)
+    result = serialize(field)
+    return response_ok(result)
 
 
 def response_client_error(message=""):
@@ -128,5 +147,3 @@ def response_server_error(message=""):
 
 if __name__ == "__main__":
     app.run(host="localhost", port=5000)
-
-
